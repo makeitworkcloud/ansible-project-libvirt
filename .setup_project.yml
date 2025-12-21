@@ -9,6 +9,14 @@
 #   _|    _|  _|    _|  _|    _|    _|      _|    _|
 #   _|    _|  _|    _|    _|_|        _|_|    _|_|
 ---
+- name: Load SOPS secrets
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Load SOPS secrets
+      community.sops.load_vars:
+        file: secrets/secrets.yaml
+
 - name: Deploy AAP content
   hosts: localhost
   gather_facts: false
@@ -23,11 +31,6 @@
       controller_username: "{{ controller_username }}"
       controller_password: "{{ controller_password }}"
       validate_certs: true
-  pre_tasks:
-    - name: Load SOPS secrets
-      community.sops.load_vars:
-        file: secrets/secrets.yaml
-
   tasks:
     - name: Create project
       awx.awx.project:
