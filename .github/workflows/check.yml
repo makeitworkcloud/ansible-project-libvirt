@@ -19,6 +19,7 @@ jobs:
     env:
       SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
       ANSIBLE_VAULT_PASSWORD_FILE: ./scripts/vault.bash
+      ANSIBLE_LOCALHOST_WARNING: False
     steps:
       - name: Checkout
         uses: actions/checkout@v4
