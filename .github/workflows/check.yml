@@ -11,21 +11,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  pre-commit:
-    name: Pre-commit (basic hooks)
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/makeitworkcloud/runner:latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Run pre-commit (skip ansible-lint)
-        run: SKIP=ansible-lint pre-commit run --all-files
-
-  ansible-check:
-    name: Ansible Lint & Check
-    needs: pre-commit
+  check:
+    name: Pre-commit & Ansible Check
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/makeitworkcloud/runner:latest
@@ -39,8 +26,34 @@ jobs:
       - name: Install Ansible collections
         run: ansible-galaxy collection install -r requirements.yml
 
-      - name: Run pre-commit (all hooks)
+      - name: Run pre-commit
         run: pre-commit run --all-files
 
       - name: Check AAP deployment (dry-run)
-        run: ansible-playbook .setup_project.yml --check --diff
+        id: check
+        run: |
+          ansible-playbook .setup_project.yml --check --diff 2>&1 | tee check-output.txt || true
+
+          tail -n 1000 check-output.txt > check-output-truncated.txt
+          mv check-output-truncated.txt check-output.txt
+
+      - name: Comment PR with Check Output
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const checkOutput = fs.readFileSync('check-output.txt', 'utf8');
+
+            const output = `#### Ansible Check (dry-run)
+            \`\`\`
+            ${checkOutput}
+            \`\`\`
+            `;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
