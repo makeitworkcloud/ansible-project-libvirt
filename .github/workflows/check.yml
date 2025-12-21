@@ -1,0 +1,33 @@
+name: Check
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check:
+    name: Pre-commit & Ansible Check
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/makeitworkcloud/runner:latest
+    env:
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      ANSIBLE_VAULT_PASSWORD_FILE: ./scripts/vault.bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Ansible collections
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: Run pre-commit
+        run: pre-commit run --all-files
+
+      - name: Check AAP deployment (dry-run)
+        run: ansible-playbook cd/setup_aap_project.yml --check --diff
