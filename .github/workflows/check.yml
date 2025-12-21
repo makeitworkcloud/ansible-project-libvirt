@@ -58,14 +58,18 @@ jobs:
           comment-author: 'github-actions[bot]'
           body-includes: '<!-- ansible-check -->'
 
+      - name: delete-comment
+        if: github.event_name == 'pull_request' && steps.find-comment.outputs.comment-id != ''
+        run: gh api repos/${{ github.repository }}/issues/comments/${{ steps.find-comment.outputs.comment-id }} -X DELETE
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: comment
         if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          comment-id: ${{ steps.find-comment.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
           body-path: comment-body.md
-          edit-mode: replace
 
       - name: fail-on-error
         if: steps.check.outcome == 'failure'
