@@ -39,7 +39,7 @@
         organization: "{{ aap_organization }}"
         scm_type: git
         scm_url: https://github.com/makeitworkcloud/ansible-project-libvirt.git
-        scm_update_on_launch: true
+        scm_update_on_launch: false
         state: present
 
     - name: Sync project
@@ -47,6 +47,7 @@
         name: "{{ aap_project_name }}"
         wait: true
         timeout: 300
+      when: not ansible_check_mode
 
     - name: Create inventory
       awx.awx.inventory:
