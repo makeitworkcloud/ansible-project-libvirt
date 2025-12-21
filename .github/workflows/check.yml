@@ -1,4 +1,4 @@
-name: Check
+name: check
 
 on:
   pull_request:
@@ -12,7 +12,6 @@ permissions:
 
 jobs:
   check:
-    name: Pre-commit & Ansible Check
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/makeitworkcloud/runner:latest
@@ -22,48 +21,52 @@ jobs:
       ANSIBLE_LOCALHOST_WARNING: "false"
       ANSIBLE_INVENTORY_UNPARSED_WARNING: "false"
     steps:
-      - name: Checkout
+      - name: checkout
         uses: actions/checkout@v4
 
-      - name: Install Ansible collections
+      - name: dependencies
         run: ansible-galaxy collection install -r requirements.yml
 
-      - name: Run pre-commit
+      - name: lint
         run: pre-commit run --all-files
 
-      - name: Check AAP deployment (dry-run)
+      - name: check
         id: check
         continue-on-error: true
         run: |
           ansible-playbook .setup_project.yml --check --diff 2>&1 | tee check-output.txt
-
           tail -n 1000 check-output.txt > check-output-truncated.txt
           mv check-output-truncated.txt check-output.txt
 
-      - name: Find existing comment
+      - name: prepare-comment
+        id: prepare-comment
+        run: |
+          {
+            echo '<!-- ansible-check -->'
+            echo '#### Ansible Check (dry-run)'
+            echo '```'
+            cat check-output.txt
+            echo '```'
+          } > comment-body.md
+
+      - name: find-comment
         if: github.event_name == 'pull_request'
         uses: peter-evans/find-comment@v3
-        id: fc
+        id: find-comment
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
           body-includes: '<!-- ansible-check -->'
 
-      - name: Comment PR with Check Output
+      - name: comment
         if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          comment-id: ${{ steps.fc.outputs.comment-id }}
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
-          body-path: check-output.txt
-          body-prefix: |
-            <!-- ansible-check -->
-            #### Ansible Check (dry-run)
-            ```
-          body-suffix: |
-            ```
+          body-path: comment-body.md
           edit-mode: replace
 
-      - name: Fail if check failed
+      - name: fail-on-error
         if: steps.check.outcome == 'failure'
         run: exit 1
