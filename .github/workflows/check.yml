@@ -39,8 +39,8 @@ jobs:
       - name: Install Ansible collections
         run: ansible-galaxy collection install -r requirements.yml
 
-      - name: Run ansible-lint
-        run: ansible-lint --exclude=secrets/ --exclude=vars/
+      - name: Run pre-commit (all hooks)
+        run: pre-commit run --all-files
 
       - name: Check AAP deployment (dry-run)
         run: ansible-playbook .setup_project.yml --check --diff
