@@ -1,0 +1,62 @@
+name: check
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/makeitworkcloud/runner:latest
+    env:
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      ANSIBLE_VAULT_PASSWORD_FILE: ./scripts/vault.bash
+      ANSIBLE_LOCALHOST_WARNING: "false"
+      ANSIBLE_INVENTORY_UNPARSED_WARNING: "false"
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: dependencies
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: lint
+        run: pre-commit run --all-files
+
+      - name: check
+        id: check
+        continue-on-error: true
+        run: |
+          ansible-playbook .setup_project.yml --check --diff 2>&1 | tee check-output.txt
+          tail -n 1000 check-output.txt > check-output-truncated.txt
+          mv check-output-truncated.txt check-output.txt
+
+      - name: prepare-comment
+        if: github.event_name == 'pull_request'
+        run: |
+          {
+            echo '<!-- ansible-check -->'
+            echo '#### Ansible Check (dry-run)'
+            echo '```'
+            cat check-output.txt
+            echo '```'
+          } > comment-body.md
+
+      - name: comment
+        if: github.event_name == 'pull_request'
+        uses: johanwulf/replace-comment@v1.0.0
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: '<!-- ansible-check -->'
+          body-path: comment-body.md
+
+      - name: fail-on-error
+        if: steps.check.outcome == 'failure'
+        run: exit 1
