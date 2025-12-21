@@ -19,7 +19,8 @@ jobs:
     env:
       SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
       ANSIBLE_VAULT_PASSWORD_FILE: ./scripts/vault.bash
-      ANSIBLE_LOCALHOST_WARNING: False
+      ANSIBLE_LOCALHOST_WARNING: "false"
+      ANSIBLE_INVENTORY_UNPARSED_WARNING: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,8 +33,9 @@ jobs:
 
       - name: Check AAP deployment (dry-run)
         id: check
+        continue-on-error: true
         run: |
-          ansible-playbook .setup_project.yml --check --diff 2>&1 | tee check-output.txt || true
+          ansible-playbook .setup_project.yml --check --diff 2>&1 | tee check-output.txt
 
           tail -n 1000 check-output.txt > check-output-truncated.txt
           mv check-output-truncated.txt check-output.txt
@@ -61,3 +63,7 @@ jobs:
           body-suffix: |
             ```
           edit-mode: replace
+
+      - name: Fail if check failed
+        if: steps.check.outcome == 'failure'
+        run: exit 1
