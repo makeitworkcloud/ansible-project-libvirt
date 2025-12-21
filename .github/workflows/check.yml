@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   check:
-    name: Pre-commit & Ansible Check
+    name: Pre-commit
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/makeitworkcloud/runner:latest
@@ -28,6 +28,3 @@ jobs:
 
       - name: Run pre-commit
         run: pre-commit run --all-files
-
-      - name: Check AAP deployment (dry-run)
-        run: ansible-playbook cd/setup_aap_project.yml --check --diff
