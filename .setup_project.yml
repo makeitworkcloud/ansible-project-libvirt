@@ -1,0 +1,107 @@
+#!/usr/bin/env ansible-playbook
+# File: .setup_project.yml
+# GitHub: https://github.com/makeitworkcloud/ansible-project-libvirt
+# Description: Creates the libvirt project in Ansible Automation Platform (AAP).
+# Author:
+#                                   _|
+#   _|    _|  _|_|_|      _|_|    _|_|_|_|    _|_|
+#     _|_|    _|    _|  _|    _|    _|      _|    _|
+#   _|    _|  _|    _|  _|    _|    _|      _|    _|
+#   _|    _|  _|    _|    _|_|        _|_|    _|_|
+---
+- name: Deploy AAP content
+  hosts: localhost
+  gather_facts: false
+  environment:
+    CONTROLLER_OPTIONAL_API_URLPATTERN_PREFIX: /api/controller/
+  vars:
+    aap_project_name: libvirt
+    aap_organization: Default
+  module_defaults:
+    group/awx.awx.controller:
+      controller_host: "{{ controller_host }}"
+      controller_username: "{{ controller_username }}"
+      controller_password: "{{ controller_password }}"
+      validate_certs: true
+  pre_tasks:
+    - name: Load SOPS secrets
+      community.sops.load_vars:
+        file: secrets/secrets.yaml
+
+  tasks:
+    - name: Create project
+      awx.awx.project:
+        name: "{{ aap_project_name }}"
+        description: "Managed by ansible-project-libvirt"
+        organization: "{{ aap_organization }}"
+        scm_type: git
+        scm_url: https://github.com/makeitworkcloud/ansible-project-libvirt.git
+        scm_update_on_launch: true
+        state: present
+
+    - name: Sync project
+      awx.awx.project_update:
+        name: "{{ aap_project_name }}"
+        wait: true
+        timeout: 300
+
+    - name: Create inventory
+      awx.awx.inventory:
+        name: "{{ aap_project_name }}"
+        description: "Managed by ansible-project-libvirt"
+        organization: "{{ aap_organization }}"
+        state: present
+
+    - name: Add libvirt host to inventory
+      awx.awx.host:
+        name: "{{ libvirt_host }}"
+        inventory: "{{ aap_project_name }}"
+        variables:
+          ansible_host: "{{ libvirt_fqdn }}"
+        state: present
+
+    - name: Create SSH credential
+      awx.awx.credential:
+        name: "{{ aap_project_name }} SSH"
+        description: "SSH key for libvirt host"
+        organization: "{{ aap_organization }}"
+        credential_type: Machine
+        inputs:
+          username: "{{ libvirt_ssh_user }}"
+          ssh_key_data: "{{ libvirt_ssh_private_key }}"
+        state: present
+
+    - name: Create Vault credential
+      awx.awx.credential:
+        name: "{{ aap_project_name }} Vault"
+        description: "Ansible Vault password"
+        organization: "{{ aap_organization }}"
+        credential_type: Vault
+        inputs:
+          vault_password: "{{ vault_password }}"
+        state: present
+
+    - name: Find playbooks
+      ansible.builtin.find:
+        paths: playbooks/
+        patterns: "*.yml,*.yaml"
+        file_type: file
+        recurse: false
+      register: found_playbooks
+
+    - name: Create job templates
+      awx.awx.job_template:
+        name: "{{ item.path | basename | regex_replace('\\.ya?ml$', '') }}"
+        description: "Job template for {{ item.path | basename }}"
+        organization: "{{ aap_organization }}"
+        project: "{{ aap_project_name }}"
+        inventory: "{{ aap_project_name }}"
+        playbook: "playbooks/{{ item.path | basename }}"
+        job_type: run
+        credentials:
+          - "{{ aap_project_name }} SSH"
+          - "{{ aap_project_name }} Vault"
+        state: present
+      loop: "{{ found_playbooks.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
