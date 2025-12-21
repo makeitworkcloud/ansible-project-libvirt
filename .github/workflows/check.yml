@@ -39,7 +39,7 @@ jobs:
           mv check-output-truncated.txt check-output.txt
 
       - name: prepare-comment
-        id: prepare-comment
+        if: github.event_name == 'pull_request'
         run: |
           {
             echo '<!-- ansible-check -->'
