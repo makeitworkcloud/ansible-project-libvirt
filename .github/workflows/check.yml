@@ -11,8 +11,21 @@ permissions:
   pull-requests: write
 
 jobs:
-  check:
-    name: Pre-commit & Ansible Check
+  pre-commit:
+    name: Pre-commit (basic hooks)
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/makeitworkcloud/runner:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run pre-commit (skip ansible-lint)
+        run: SKIP=ansible-lint pre-commit run --all-files
+
+  ansible-check:
+    name: Ansible Lint & Check
+    needs: pre-commit
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/makeitworkcloud/runner:latest
@@ -26,8 +39,8 @@ jobs:
       - name: Install Ansible collections
         run: ansible-galaxy collection install -r requirements.yml
 
-      - name: Run pre-commit
-        run: pre-commit run --all-files
+      - name: Run ansible-lint
+        run: ansible-lint --exclude=secrets/ --exclude=vars/
 
       - name: Check AAP deployment (dry-run)
         run: ansible-playbook .setup_project.yml --check --diff
