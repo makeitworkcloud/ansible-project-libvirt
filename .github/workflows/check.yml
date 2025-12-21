@@ -51,7 +51,7 @@ jobs:
 
       - name: comment
         if: github.event_name == 'pull_request'
-        uses: johanwulf/replace-comment@v1
+        uses: johanwulf/replace-comment@v1.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body-includes: '<!-- ansible-check -->'
