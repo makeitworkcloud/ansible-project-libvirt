@@ -30,7 +30,7 @@ jobs:
           python-version: '3.13'
 
       - name: install pre-commit
-        run: pip install pre-commit
+        run: pip install --break-system-packages pre-commit
 
       - name: dependencies
         run: ansible-galaxy collection install -r requirements.yml
