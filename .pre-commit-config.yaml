@@ -1,4 +1,9 @@
 repos:
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.0.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -8,12 +13,12 @@ repos:
       - id: check-vcs-permalinks
       - id: destroyed-symlinks
       - id: detect-private-key
+      - id: end-of-file-fixer
       - id: mixed-line-ending
+      - id: trailing-whitespace
   - repo: https://github.com/ansible/ansible-lint
     rev: v25.12.1
     hooks:
       - id: ansible-lint
-        language_version: python3
         additional_dependencies:
           - ansible
-        args: [--exclude=secrets/, --exclude=vars/]

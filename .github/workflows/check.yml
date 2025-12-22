@@ -11,10 +11,25 @@ permissions:
   pull-requests: write
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: pre-commit
+        uses: pre-commit/action@v3.0.1
+
   check:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/makeitworkcloud/runner:latest
+    needs: [lint]
     env:
       SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
       ANSIBLE_VAULT_PASSWORD_FILE: ./scripts/vault.bash
@@ -26,9 +41,6 @@ jobs:
 
       - name: dependencies
         run: ansible-galaxy collection install -r requirements.yml
-
-      - name: lint
-        run: pre-commit run --all-files
 
       - name: check
         id: check
