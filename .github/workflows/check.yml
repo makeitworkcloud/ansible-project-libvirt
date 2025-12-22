@@ -24,10 +24,13 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
-      - name: install python 3.13
-        run: |
-          dnf install -y python3.13
-          ln -sf /usr/bin/python3.13 /usr/local/bin/python3.13
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: install pre-commit
+        run: pip install pre-commit
 
       - name: dependencies
         run: ansible-galaxy collection install -r requirements.yml
