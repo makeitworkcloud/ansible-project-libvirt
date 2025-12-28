@@ -25,7 +25,7 @@ jobs:
         uses: pre-commit/action@v3.0.1
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: arc
     needs: [lint]
     env:
       SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
@@ -35,6 +35,17 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
+
+      - name: setup sops
+        uses: mdgreenwald/mozilla-sops-action@v1
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: install ansible
+        run: pip install ansible
 
       - name: dependencies
         run: ansible-galaxy collection install -r requirements.yml
