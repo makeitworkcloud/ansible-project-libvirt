@@ -52,22 +52,14 @@
         url: >-
           {{ 'https://github.com/actions/runner/releases/download/' ~ actions_runner_json_reponse.json.tag_name
           ~ '/actions-runner-linux-x64-' ~ actions_runner_json_reponse.json.tag_name[1:] ~ '.tar.gz' }}
-        dest: "/home/{{ runner_ssh_user }}/actions-runner-linux-x64-{{ actions_runner_json_reponse.json.tag_name[1:] }}.tar.gz"
+        dest: "/opt/actions-runner/actions-runner-linux-x64-{{ actions_runner_json_reponse.json.tag_name[1:] }}.tar.gz"
         owner: "{{ runner_ssh_user }}"
         mode: '0644'
 
-    - name: Create actions-runner directory
-      ansible.builtin.file:
-        path: "/home/{{ runner_ssh_user }}/actions-runner"
-        state: directory
-        owner: "{{ runner_ssh_user }}"
-        group: "{{ runner_ssh_user }}"
-        mode: '0755'
-
     - name: Extract GitHub Actions runner
       ansible.builtin.unarchive:
-        src: "/home/{{ runner_ssh_user }}/actions-runner-linux-x64-{{ actions_runner_json_reponse.json.tag_name[1:] }}.tar.gz"
-        dest: "/home/{{ runner_ssh_user }}/actions-runner"
+        src: "/opt/actions-runner/actions-runner-linux-x64-{{ actions_runner_json_reponse.json.tag_name[1:] }}.tar.gz"
+        dest: /opt/actions-runner
         remote_src: true
         owner: "{{ runner_ssh_user }}"
 
@@ -80,15 +72,15 @@
         cmd: |
           ./config.sh --name libvirt-{{ random_id }} \
           --unattended --labels libvirt --url https://github.com/{{ github_org }} --token {{ runner_registration_token }}
-        chdir: "/home/{{ runner_ssh_user }}/actions-runner"
-        creates: "/home/{{ runner_ssh_user }}/actions-runner/.runner"
+        chdir: /opt/actions-runner
+        creates: /opt/actions-runner/.runner
       changed_when: true
 
     - name: Install GitHub Actions runner as a service
       ansible.builtin.command:
         cmd: |
-          ./svc.sh install
-        chdir: "/home/{{ runner_ssh_user }}/actions-runner"
+          ./svc.sh install {{ runner_ssh_user }}
+        chdir: /opt/actions-runner
         creates: "/etc/systemd/system/actions.runner.{{ github_org }}.libvirt-*.service"
       become: true
       changed_when: true
@@ -98,6 +90,14 @@
         state: disabled
       become: true
       notify: Reboot the runner to apply SELinux changes
+
+    - name: Create runner work directory cleanup cron
+      ansible.builtin.cron:
+        name: "cleanup runner work directory"
+        minute: "30"
+        hour: "*/6"
+        job: "find /opt/actions-runner/_work -mindepth 2 -maxdepth 2 -type d -mtime +1 -exec rm -rf {} \\; 2>/dev/null || true"
+        user: "{{ runner_ssh_user }}"
 
   handlers:
     - name: Reboot the runner to apply SELinux changes
