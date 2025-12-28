@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: arc
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -26,7 +26,7 @@ jobs:
         uses: pre-commit/action@v3.0.1
 
   check:
-    runs-on: ubuntu-latest
+    runs-on: arc-dind
     container:
       image: ghcr.io/makeitworkcloud/runner:latest
     needs: [lint]
