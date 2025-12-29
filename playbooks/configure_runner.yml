@@ -91,6 +91,19 @@
       become: true
       notify: Reboot the runner to apply SELinux changes
 
+    - name: Install cronie for cron support
+      ansible.builtin.dnf:
+        name: cronie
+        state: present
+      become: true
+
+    - name: Enable and start crond service
+      ansible.builtin.systemd:
+        name: crond
+        enabled: true
+        state: started
+      become: true
+
     - name: Create runner work directory cleanup cron
       ansible.builtin.cron:
         name: "cleanup runner work directory"
