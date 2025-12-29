@@ -85,6 +85,13 @@
       become: true
       changed_when: true
 
+    - name: Start GitHub Actions runner service
+      ansible.builtin.command:
+        cmd: ./svc.sh start
+        chdir: /opt/actions-runner
+      become: true
+      changed_when: true
+
     - name: Disable SELinux
       ansible.posix.selinux:
         state: disabled
